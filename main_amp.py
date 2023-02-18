@@ -153,7 +153,7 @@ if __name__=='__main__':
     parser.add_argument('--early_stop', type=int, default=6000, help='w.r.t., iterations')
     parser.add_argument('--milestones', type=int, nargs='+', default=[2400, 4800])
     parser.add_argument('--seed', type=int, default=777)
-    parser.add_argument("--device", type=int, default=0)
+    parser.add_argument("--device", type=int, default=1)
     args = parser.parse_args()
 
     args = add_identity(args, dir_path)

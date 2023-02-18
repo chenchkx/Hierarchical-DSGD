@@ -1,4 +1,6 @@
 
+import torch
+import torch.nn as nn
 
 from .resnet import ResNet18
 from .alexnet import alexnet
@@ -25,7 +27,9 @@ def load_model(name, outputsize, pretrained=None):
     if name.lower() == "densenet121":
         model = DenseNet121(num_classes=outputsize, pretrained=pretrained)
     if name.lower() == "densenet121_m":
-        model = densenet121_m(num_classes=outputsize, pretrained=False)
+        model = densenet121_m(pretrained=pretrained)
+        model.classifier = nn.Linear(model.classifier.in_features, outputsize)
+
 
     return model
 
