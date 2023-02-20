@@ -93,7 +93,7 @@ def main(args):
                     param.data += worker.model.state_dict()[name].data
                 param.data /= args.size
             
-            if iteration % 50 == 0:    
+            if iteration % 150 == 0:    
                 start_time = datetime.datetime.now() 
                 eval_iteration = iteration
                 train_acc, train_loss, valid_acc, valid_loss = eval_vision(center_model, probe_train_loader, probe_valid_loader,

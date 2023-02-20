@@ -18,14 +18,15 @@ def load_model(name, outputsize, pretrained=None):
 
     if name.lower() == 'resnet18':
         model = ResNet18(num_classes=outputsize, pretrained=pretrained)
-    if name.lower() == 'resnet18_m':
-        model = resnet18_m(num_classes=outputsize, pretrained=pretrained)
     if name.lower() == 'resnet34_m':
         model = resnet34_m(num_classes=outputsize, pretrained=pretrained)
     if name.lower() == 'alexnet':
         model = alexnet(num_classes=outputsize, pretrained=pretrained)
     if name.lower() == "densenet121":
         model = DenseNet121(num_classes=outputsize, pretrained=pretrained)
+    if name.lower() == 'resnet18_m':
+        model = resnet18_m(pretrained=pretrained)
+        model.fc = nn.Linear(model.fc.in_features, outputsize)
     if name.lower() == "densenet121_m":
         model = densenet121_m(pretrained=pretrained)
         model.classifier = nn.Linear(model.classifier.in_features, outputsize)
