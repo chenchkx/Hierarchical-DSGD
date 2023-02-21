@@ -27,7 +27,7 @@ class Worker_Vision:
 
         batch = self.train_loader_iter.next()
         data, target = batch[0].to(self.device), batch[1].to(self.device)
-        with torch.cuda.amp.autocast(enabled=True,dtype=torch.bfloat16):
+        with torch.cuda.amp.autocast(enabled=True,dtype=torch.float16):
             output = self.model(data)
             loss = criterion(output, target)
         self.optimizer.zero_grad()
@@ -39,7 +39,7 @@ class Worker_Vision:
 
         batch = self.train_loader_iter.next()
         data, target = batch[0].to(self.device), batch[1].to(self.device)
-        with torch.cuda.amp.autocast(enabled=True,dtype=torch.bfloat16):
+        with torch.cuda.amp.autocast(enabled=True,dtype=torch.float16):
             output = self.model(data)
             loss = criterion(output, target)
         self.optimizer.zero_grad()

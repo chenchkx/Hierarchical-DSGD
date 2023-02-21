@@ -1,13 +1,7 @@
 
 import torch
 import torch.nn as nn
-
-from .resnet import ResNet18
-from .alexnet import alexnet
-from .densenet import DenseNet121 
-from .resnet_modify import resnet18 as resnet18_m
-from .resnet_modify import resnet34 as resnet34_m
-from .densenet_modify import densenet121 as densenet121_m
+from torchvision import models
 
 def load_model(name, outputsize, pretrained=None):
 
@@ -16,21 +10,21 @@ def load_model(name, outputsize, pretrained=None):
     else:
         pretrained = False
 
-    if name.lower() == 'resnet18':
-        model = ResNet18(num_classes=outputsize, pretrained=pretrained)
-    if name.lower() == 'resnet34_m':
-        model = resnet34_m(num_classes=outputsize, pretrained=pretrained)
-    if name.lower() == 'alexnet':
-        model = alexnet(num_classes=outputsize, pretrained=pretrained)
-    if name.lower() == "densenet121":
-        model = DenseNet121(num_classes=outputsize, pretrained=pretrained)
-    if name.lower() == 'resnet18_m':
-        model = resnet18_m(pretrained=pretrained)
+    if name.lower() in 'alexnet_micro':
+        model = models.alexnet(pretrained=pretrained)
+        model.features[0] = nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=3)
+        model.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        model.classifier = nn.Linear(256, outputsize)
+    elif name.lower() in 'resnet18_micro':
+        model = models.resnet18(pretrained=pretrained)
+        model.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=3, bias=False)
+        model.maxpool = nn.MaxPool2d(kernel_size=3, stride=1, padding=1)
         model.fc = nn.Linear(model.fc.in_features, outputsize)
-    if name.lower() == "densenet121_m":
-        model = densenet121_m(pretrained=pretrained)
+    elif name.lower() in 'densenet121_micro':
+        model = models.densenet121(pretrained=pretrained)
+        model.features.conv0 = nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=3, bias=False)
+        model.features.pool0 = nn.MaxPool2d(kernel_size=3, stride=1, padding=1)
         model.classifier = nn.Linear(model.classifier.in_features, outputsize)
-
 
     return model
 

@@ -93,7 +93,7 @@ def main(args):
                     param.data += worker.model.state_dict()[name].data
                 param.data /= args.size
             
-            if iteration % 150 == 0:    
+            if iteration % 100 == 0:    
                 start_time = datetime.datetime.now() 
                 eval_iteration = iteration
                 train_acc, train_loss, valid_acc, valid_loss = eval_vision(center_model, probe_train_loader, probe_valid_loader,
@@ -139,8 +139,8 @@ if __name__=='__main__':
     parser.add_argument('--port', type=int, default=29500)
     parser.add_argument('--backend', type=str, default="gloo")
     # deep model parameter
-    parser.add_argument('--model', type=str, default='DenseNet121_M', choices=['ResNet18', 'AlexNet', 'DenseNet121',
-                                                                             'ResNet18_M', 'ResNet34_M', 'DenseNet121_M'])
+    parser.add_argument('--model', type=str, default='DenseNet121_M', 
+                        choices=['ResNet18', 'AlexNet', 'DenseNet121', 'AlexNet_M','ResNet18_M', 'ResNet34_M', 'DenseNet121_M'])
     parser.add_argument("--pretrained", type=int, default=1)
 
     # optimization parameter
@@ -153,7 +153,7 @@ if __name__=='__main__':
     parser.add_argument('--early_stop', type=int, default=6000, help='w.r.t., iterations')
     parser.add_argument('--milestones', type=int, nargs='+', default=[2400, 4800])
     parser.add_argument('--seed', type=int, default=777)
-    parser.add_argument("--device", type=int, default=1)
+    parser.add_argument("--device", type=int, default=2)
     args = parser.parse_args()
 
     args = add_identity(args, dir_path)
