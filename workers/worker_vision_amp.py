@@ -55,8 +55,8 @@ class Worker_Vision:
     def update_grad(self):
         # self.optimizer.step()
         scaler.step(self.optimizer)
-        self.scheduler.step()
         scaler.update()
+        self.scheduler.step()
 
     def scheduler_step(self):
         self.scheduler.step()
