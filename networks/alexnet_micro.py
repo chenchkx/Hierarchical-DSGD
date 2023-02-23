@@ -18,20 +18,20 @@ class AlexNet(nn.Module):
         super(AlexNet, self).__init__()
         self.features = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=11, stride=1, padding=2), # stride: 4->1
-            nn.BatchNorm2d(64), # add bn before maxpool
             nn.ReLU(inplace=True),
+            nn.BatchNorm2d(64), # add bn before maxpool
             nn.MaxPool2d(kernel_size=3, stride=2),
             nn.Conv2d(64, 192, kernel_size=5, padding=2),
-            nn.BatchNorm2d(192), # add bn before maxpool
             nn.ReLU(inplace=True),
+            nn.BatchNorm2d(192), # add bn before maxpool
             nn.MaxPool2d(kernel_size=3, stride=2),
             nn.Conv2d(192, 384, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.Conv2d(384, 256, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.Conv2d(256, 256, kernel_size=3, padding=1),
-            nn.BatchNorm2d(256), # add bn before maxpool
             nn.ReLU(inplace=True),
+            nn.BatchNorm2d(256), # add bn before maxpool
             nn.MaxPool2d(kernel_size=3, stride=2),
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1)) # (6,6) -> (1,1)
@@ -70,8 +70,9 @@ def alexnet(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> A
         model_dict = copy.deepcopy(model.state_dict())
         for name, param in state_dict.items():
             if name in ['features.0.weight']:
-                nn.init.kaiming_normal_(model_dict[name], mode='fan_out', nonlinearity='relu')
-            if name in ['features.3.weight']:
+                # nn.init.kaiming_normal_(model_dict[name], mode='fan_out', nonlinearity='relu')
+                model_dict[name] = param
+            elif name in ['features.3.weight']:
                 model_dict['features.4.weight'] =  param
             elif name in ['features.6.weight']:
                 model_dict['features.8.weight'] =  param
