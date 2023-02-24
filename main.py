@@ -45,7 +45,10 @@ def main(args):
         # scheduler = MultiStepLR(optimizer, milestones=args.milestones, gamma=args.gamma)
         scheduler = Warmup_MultiStepLR(optimizer, warmup_step=args.warmup_step, milestones=args.milestones, gamma=args.gamma)
 
-        worker = Worker_Vision(model, rank, optimizer, scheduler, train_loader, args.device)
+        if args.amp:
+            worker = Worker_Vision_AMP(model, rank, optimizer, scheduler, train_loader, args.device)
+        else:
+            worker = Worker_Vision(model, rank, optimizer, scheduler, train_loader, args.device)
         worker_list.append(worker)
 
 
@@ -87,25 +90,6 @@ def main(args):
                     # worker.step() # 效果会变差
                     worker.update_grad()
 
-                # if iteration in [1000,2000,3000]:
-                #     models_linear_tensor = torch.zeros(16,10,512)
-                #     worker_num=0
-                #     for worker in worker_list:
-                #         models_linear_tensor[worker_num,:,:]=worker.model.state_dict()['seq.fc.weight']
-                #         worker_num+=1
-                #     models_linear_tensor_difference = models_linear_tensor - models_linear_tensor.mean(0).unsqueeze(0).repeat(16,1,1)
-                #     models_releate_matrix = models_linear_tensor_difference.transpose(1,2).bmm(models_linear_tensor_difference)
-                    
-                # if iteration == 1000:
-                #     torch.save(models_linear_tensor,'models_linear_tensor_1000.pt')
-                #     torch.save(models_releate_matrix,'models_releate_matrix_1000.pt')
-                # elif iteration == 2000:
-                #     torch.save(models_linear_tensor,'models_linear_tensor_2000.pt')
-                #     torch.save(models_releate_matrix,'models_releate_matrix_2000.pt')   
-                # elif iteration == 3000:                 
-                #     torch.save(models_linear_tensor,'models_linear_tensor_3000.pt')
-                #     torch.save(models_releate_matrix,'models_releate_matrix_3000.pt')                       
-
             center_model = copy.deepcopy(worker_list[0].model)
             for name, param in center_model.named_parameters():
                 for worker in worker_list[1:]:
@@ -115,8 +99,12 @@ def main(args):
             if iteration % 50 == 0:    
                 start_time = datetime.datetime.now() 
                 eval_iteration = iteration
-                train_acc, train_loss, valid_acc, valid_loss = eval_vision(center_model, probe_train_loader, probe_valid_loader,
-                                                                            None, iteration, writer, args.device)
+                if args.amp:
+                    train_acc, train_loss, valid_acc, valid_loss = eval_vision_amp(center_model, probe_train_loader, probe_valid_loader,
+                                                                                None, iteration, writer, args.device)                    
+                else:
+                    train_acc, train_loss, valid_acc, valid_loss = eval_vision(center_model, probe_train_loader, probe_valid_loader,
+                                                                                None, iteration, writer, args.device)
                 print(f"\n|\033[0;31m Iteration:{iteration}|{args.early_stop}, epoch: {epoch}|{args.epoch},\033[0m",
                         f'train loss:{train_loss:.4}, acc:{train_acc:.4%}, '
                         f'valid loss:{valid_loss:.4}, acc:{valid_acc:.4%}.',
@@ -158,8 +146,8 @@ if __name__=='__main__':
     parser.add_argument('--port', type=int, default=29500)
     parser.add_argument('--backend', type=str, default="gloo")
     # deep model parameter
-    parser.add_argument('--model', type=str, default='ResNet18_M', choices=['ResNet18', 'AlexNet', 'DenseNet121',
-                                                                             'ResNet18_M', 'ResNet34_M', 'DenseNet121_M'])
+    parser.add_argument('--model', type=str, default='ResNet18', 
+                        choices=['ResNet18', 'AlexNet', 'DenseNet121', 'AlexNet_M','ResNet18_M', 'ResNet34_M', 'DenseNet121_M'])
     parser.add_argument("--pretrained", type=int, default=1)
 
     # optimization parameter
@@ -171,8 +159,9 @@ if __name__=='__main__':
     parser.add_argument('--epoch', type=int, default=6000)
     parser.add_argument('--early_stop', type=int, default=6000, help='w.r.t., iterations')
     parser.add_argument('--milestones', type=int, nargs='+', default=[2400, 4800])
-    parser.add_argument('--seed', type=int, default=777)
+    parser.add_argument('--seed', type=int, default=666)
     parser.add_argument("--device", type=int, default=0)
+    parser.add_argument("--amp", action='store_true')
     args = parser.parse_args()
 
     args = add_identity(args, dir_path)

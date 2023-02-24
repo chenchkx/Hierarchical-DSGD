@@ -69,7 +69,8 @@ def add_identity(args, dir_path):
                      f"{args.warmup_step}-"+ 
                      f"{args.epoch}-"+      
                      f"{args.early_stop}-"+ 
-                     f"{args.seed}"
+                     f"{args.seed}-"+
+                     f"{args.amp}"
                      )       
     args.logs_perf_dir = os.path.join(dir_path,'logs_perf')
     if not os.path.exists(args.logs_perf_dir):
@@ -145,6 +146,60 @@ def eval_vision(model, train_loader, valid_loader, epoch, iteration, tb, device)
 
     return total_train_acc, total_train_loss, total_valid_acc, total_valid_loss
 
+
+def eval_vision_amp(model, train_loader, valid_loader, epoch, iteration, tb, device):
+    criterion=nn.CrossEntropyLoss()
+    model.eval()
+
+    print(f"\r")
+    total_loss, total_correct, total, step = 0, 0, 0, 0
+    start = datetime.datetime.now()
+    for batch in train_loader:
+        step += 1
+        data, target = batch[0].to(device), batch[1].to(device)
+        with torch.cuda.amp.autocast(enabled=True,dtype=torch.float16):
+            output = model(data)    
+            p = torch.softmax(output, dim=1).argmax(1)
+            total_correct += p.eq(target).sum().item()
+            total += len(target)
+            loss = criterion(output, target)
+            total_loss += loss.item()
+        end = datetime.datetime.now()
+        print(f"\r"+f"| Evaluate Train | step: {step}, time: {(end - start).seconds}s", flush=True, end="")
+    total_train_loss = total_loss / step
+    total_train_acc = total_correct / total
+
+    print(f"\r")
+    total_loss, total_correct, total, step = 0, 0, 0, 0
+    for batch in valid_loader:
+        step += 1
+        data, target = batch[0].to(device), batch[1].to(device)
+        with torch.cuda.amp.autocast(enabled=True,dtype=torch.bfloat16):
+            output = model(data)
+            p = torch.softmax(output, dim=1).argmax(1)
+            total_correct += p.eq(target).sum().item()
+            total += len(target)
+            loss = criterion(output, target)
+            total_loss += loss.item()
+        end = datetime.datetime.now()
+        print(f"\r| Evaluate Valid | step: {step}, time: {(end - start).seconds}s", flush=True, end="")
+    total_valid_loss = total_loss / step
+    total_valid_acc = total_correct / total
+
+    if epoch is None:
+        tb.add_scalar("valid loss - train loss", total_valid_loss - total_train_loss, iteration)
+        tb.add_scalar("valid loss", total_valid_loss, iteration)
+        tb.add_scalar("train loss", total_train_loss, iteration)
+        tb.add_scalar("valid acc", total_valid_acc, iteration)
+        tb.add_scalar("train acc", total_train_acc, iteration)
+    else:
+        tb.add_scalar("valid loss - train loss", total_valid_loss - total_train_loss, epoch)
+        tb.add_scalar("valid loss", total_valid_loss, epoch)
+        tb.add_scalar("train loss", total_train_loss, epoch)
+        tb.add_scalar("valid acc", total_valid_acc, epoch)
+        tb.add_scalar("train acc", total_train_acc, epoch)
+
+    return total_train_acc, total_train_loss, total_valid_acc, total_valid_loss
 
 
 def generate_P(mode, size):
