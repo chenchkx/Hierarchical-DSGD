@@ -174,7 +174,7 @@ def eval_vision_amp(model, train_loader, valid_loader, epoch, iteration, tb, dev
     for batch in valid_loader:
         step += 1
         data, target = batch[0].to(device), batch[1].to(device)
-        with torch.cuda.amp.autocast(enabled=True,dtype=torch.bfloat16):
+        with torch.cuda.amp.autocast(enabled=True,dtype=torch.float16):
             output = model(data)
             p = torch.softmax(output, dim=1).argmax(1)
             total_correct += p.eq(target).sum().item()
