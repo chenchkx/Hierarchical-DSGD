@@ -133,7 +133,7 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser()
     ## dataset
     parser.add_argument("--dataset_path", type=str, default='datasets')
-    parser.add_argument("--dataset_name", type=str, default='CIFAR100',
+    parser.add_argument("--dataset_name", type=str, default='CIFAR10',
                                             choices=['CIFAR10','CIFAR100','TinyImageNet'])
     parser.add_argument("--image_size", type=int, default=56, help='input image size')
     parser.add_argument("--batch_size", type=int, default=512)
@@ -161,7 +161,7 @@ if __name__=='__main__':
     parser.add_argument('--milestones', type=int, nargs='+', default=[2400, 4800])
     parser.add_argument('--seed', type=int, default=666)
     parser.add_argument("--device", type=int, default=0)
-    parser.add_argument("--amp", action='store_true')
+    parser.add_argument("--amp", action='store_true', help='automatic mixed precision')
     args = parser.parse_args()
 
     args = add_identity(args, dir_path)
