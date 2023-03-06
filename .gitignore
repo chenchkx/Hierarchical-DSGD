@@ -6,7 +6,6 @@ __pycache__/
 
 .vscode
 
-csv*
 logs_runs
 logs_perf
 
