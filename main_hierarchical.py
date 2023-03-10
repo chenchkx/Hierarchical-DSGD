@@ -52,6 +52,7 @@ def main(args):
         worker_list.append(worker)
 
 
+
     # 定义 中心模型 center_model
     center_model = copy.deepcopy(worker_list[0].model)
     # center_model = copy.deepcopy(worker_list[0].model)
@@ -60,7 +61,19 @@ def main(args):
             param.data += worker.model.state_dict()[name].data
         param.data /= args.size
 
-    P = generate_P(args.mode, args.size)
+    center_model_list=[]
+    for group_th in range(args.group):
+        group_head = int(group_th*args.size/args.group)
+        group_tail = int((group_th+1)*args.size/args.group-1)
+        group_center_model = copy.deepcopy(worker_list[group_head].model)
+        for name, param in group_center_model.named_parameters():
+            for worker in worker_list[group_head+1:group_tail]:
+                param.data += worker.model.state_dict()[name].data
+            param.data /= args.size
+        center_model_list.append(group_center_model)
+
+    P = generate_P(args.mode, int(args.size/args.group))
+        
     iteration = 0
     for epoch in range(args.epoch):  
         for worker in worker_list:
@@ -71,24 +84,41 @@ def main(args):
                     worker.model.load_state_dict(center_model.state_dict())
                     worker.step()
                     worker.update_grad()
-            else: # dsgd
+            
+            else: 
+                # dsgd
                 # 每个iteration，传播矩阵P中的worker做random shuffle（自己的邻居在下一个iteration时改变）
                 if args.shuffle == "random":
-                    P_perturbed = np.matmul(np.matmul(PermutationMatrix(args.size).T,P),PermutationMatrix(args.size)) 
+                    P_perturbed = np.matmul(np.matmul(PermutationMatrix(int(args.size/args.group)).T,P),PermutationMatrix(int(args.size/args.group))) 
                 elif args.shuffle == "fixed":
                     P_perturbed = P
-                model_dict_list = []
-                for worker in worker_list:
-                    model_dict_list.append(worker.model.state_dict())  
-                for worker in worker_list:
-                    worker.step()
-                    for name, param in worker.model.named_parameters():
+                center_model_dict_list =[]
+                for group_center_model in center_model_list:
+                    center_model_dict_list.append(group_center_model.state_dict())
+                for group_th in range(args.group):    
+                    group_center_model = copy.deepcopy(center_model_list[group_th])
+                    for name, param in group_center_model.named_parameters():
                         param.data = torch.zeros_like(param.data)
-                        for i in range(args.size):
-                            p = P_perturbed[worker.rank][i]
-                            param.data += model_dict_list[i][name].data * p
-                    # worker.step() # 效果会变差
-                    worker.update_grad()
+                        for i in range(int(args.size/args.group)):
+                            p = P_perturbed[group_th][i]
+                            param.data += center_model_dict_list[i][name].data * p
+                    center_model_list[group_th] = group_center_model
+
+                for group_th in range(args.group):
+                    group_head = int(group_th*args.size/args.group)
+                    group_tail = int((group_th+1)*args.size/args.group-1)
+                    group_center_model = copy.deepcopy(center_model_list[group_th])
+                    group_center_model_update = copy.deepcopy(group_center_model)
+                    for name, param in group_center_model_update.named_parameters():
+                        param.data = torch.zeros_like(param.data)
+
+                    for worker in worker_list[group_head:group_tail]:
+                        worker.model.load_state_dict(group_center_model.state_dict())
+                        worker.step()
+                        worker.update_grad()
+                        for name, param in group_center_model_update.named_parameters():
+                            param.data += worker.model.state_dict()[name].data/(group_tail-group_head+1)
+                    center_model_list[group_th] = group_center_model_update
 
             center_model = copy.deepcopy(worker_list[0].model)
             for name, param in center_model.named_parameters():
@@ -142,6 +172,7 @@ if __name__=='__main__':
     # mode parameter
     parser.add_argument('--mode', type=str, default='ring', choices=['csgd', 'ring', 'meshrgrid', 'exponential'])
     parser.add_argument('--shuffle', type=str, default="fixed", choices=['fixed', 'random'])
+    parser.add_argument('--group', type=int, default=4)
     parser.add_argument('--size', type=int, default=16)
     parser.add_argument('--port', type=int, default=29500)
     parser.add_argument('--backend', type=str, default="gloo")
