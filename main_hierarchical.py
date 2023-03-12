@@ -64,7 +64,7 @@ def main(args):
     center_model_list=[]
     for group_th in range(args.group):
         group_head = int(group_th*args.size/args.group)
-        group_tail = int((group_th+1)*args.size/args.group-1)
+        group_tail = int((group_th+1)*args.size/args.group)
         group_center_model = copy.deepcopy(worker_list[group_head].model)
         for name, param in group_center_model.named_parameters():
             for worker in worker_list[group_head+1:group_tail]:
@@ -84,7 +84,6 @@ def main(args):
                     worker.model.load_state_dict(center_model.state_dict())
                     worker.step()
                     worker.update_grad()
-            
             else: 
                 # dsgd
                 # 每个iteration，传播矩阵P中的worker做random shuffle（自己的邻居在下一个iteration时改变）
@@ -92,6 +91,44 @@ def main(args):
                     P_perturbed = np.matmul(np.matmul(PermutationMatrix(int(args.size/args.group)).T,P),PermutationMatrix(int(args.size/args.group))) 
                 elif args.shuffle == "fixed":
                     P_perturbed = P
+                # center_model_dict_list =[]
+                # for group_center_model in center_model_list:
+                #     center_model_dict_list.append(group_center_model.state_dict())
+                # for group_th in range(args.group):    
+                #     group_center_model = copy.deepcopy(center_model_list[group_th])
+                #     for name, param in group_center_model.named_parameters():
+                #         param.data = torch.zeros_like(param.data)
+                #         for i in range(args.group):
+                #             p = P_perturbed[group_th][i]
+                #             param.data += center_model_dict_list[i][name].data * p
+                #     center_model_list[group_th] = group_center_model
+
+                for group_th in range(args.group):
+                    group_head = int(group_th*args.size/args.group)
+                    group_tail = int((group_th+1)*args.size/args.group)
+                    group_center_model = copy.deepcopy(center_model_list[group_th])
+                    # group_center_model_update = copy.deepcopy(group_center_model)
+                    # for name, param in group_center_model_update.named_parameters():
+                    #     param.data = torch.zeros_like(param.data)
+
+                    for worker in worker_list[group_head:group_tail]:
+                        worker.model.load_state_dict(group_center_model.state_dict())
+                        worker.step()
+                        worker.update_grad()
+                    #     for name, param in group_center_model_update.named_parameters():
+                    #         param.data += worker.model.state_dict()[name].data/(group_tail-group_head)
+                    # center_model_list[group_th] = group_center_model_update
+
+                for group_th in range(args.group):
+                    group_head = int(group_th*args.size/args.group)
+                    group_tail = int((group_th+1)*args.size/args.group)
+                    group_center_model = copy.deepcopy(worker_list[group_head].model)
+                    for name, param in group_center_model.named_parameters():
+                        for worker in worker_list[group_head+1:group_tail]:
+                            param.data += worker.model.state_dict()[name].data
+                        param.data /= (group_tail-group_head)
+                    center_model_list[group_th] = group_center_model       
+
                 center_model_dict_list =[]
                 for group_center_model in center_model_list:
                     center_model_dict_list.append(group_center_model.state_dict())
@@ -99,26 +136,13 @@ def main(args):
                     group_center_model = copy.deepcopy(center_model_list[group_th])
                     for name, param in group_center_model.named_parameters():
                         param.data = torch.zeros_like(param.data)
-                        for i in range(int(args.size/args.group)):
+                        for i in range(args.group):
                             p = P_perturbed[group_th][i]
                             param.data += center_model_dict_list[i][name].data * p
-                    center_model_list[group_th] = group_center_model
+                    center_model_list[group_th] = group_center_model      
 
-                for group_th in range(args.group):
-                    group_head = int(group_th*args.size/args.group)
-                    group_tail = int((group_th+1)*args.size/args.group-1)
-                    group_center_model = copy.deepcopy(center_model_list[group_th])
-                    group_center_model_update = copy.deepcopy(group_center_model)
-                    for name, param in group_center_model_update.named_parameters():
-                        param.data = torch.zeros_like(param.data)
 
-                    for worker in worker_list[group_head:group_tail]:
-                        worker.model.load_state_dict(group_center_model.state_dict())
-                        worker.step()
-                        worker.update_grad()
-                        for name, param in group_center_model_update.named_parameters():
-                            param.data += worker.model.state_dict()[name].data/(group_tail-group_head+1)
-                    center_model_list[group_th] = group_center_model_update
+
 
             center_model = copy.deepcopy(worker_list[0].model)
             for name, param in center_model.named_parameters():
@@ -177,7 +201,7 @@ if __name__=='__main__':
     parser.add_argument('--port', type=int, default=29500)
     parser.add_argument('--backend', type=str, default="gloo")
     # deep model parameter
-    parser.add_argument('--model', type=str, default='ResNet18', 
+    parser.add_argument('--model', type=str, default='AlexNet', 
                         choices=['ResNet18', 'AlexNet', 'DenseNet121', 'AlexNet_M','ResNet18_M', 'ResNet34_M', 'DenseNet121_M'])
     parser.add_argument("--pretrained", type=int, default=1)
 
